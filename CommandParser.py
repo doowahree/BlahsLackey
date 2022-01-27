@@ -34,7 +34,7 @@ class TokenMatcher(object):
     def help_string(self) -> str:
         val = self.pattern.pattern + self.descriptor
         if self.token_parsing:
-            val += '<%s>' % self.token_parsing[0]
+            val = '%s<%s>' % (self.descriptor, self.token_parsing[0])
         return '[%s]' % val if self.is_optional else val
 
 
