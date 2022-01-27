@@ -1,11 +1,10 @@
 import re
-from enum import Enum
 from traceback import print_exc
 
 from CommandParser import Command, CommandSet, TokenMatcherSet, TokenMatcher
 from DiscordGateway import DiscordSession
 from DiscordMessageTypes import MessageCreate
-from GlobalDatabase import GlobalDatabase, _GlobalDatabase
+from GlobalDatabase import _GlobalDatabase
 from listeners.ListenerMapping_pb2 import ListenerMapping
 from listeners.wordle.WordleDatabase import WordleDatabase
 from listeners.wordle.WordleListener import WordleListener
@@ -44,24 +43,25 @@ class AllListeners(object):
     def register_listener(self, msg: MessageCreate, ds: DiscordSession, listener_type: str = None):
         if listener_type in self.listeners:
             if listener_type in self.listener_mapping.channel_to_listener_mapping[msg.channel_id].listeners:
-                ds.send_message(msg.channel_id,'[%s] command already activated for this channel' % listener_type)
+                ds.send_message(msg.channel_id, '[%s] command already activated for this channel' % listener_type)
             else:
                 self.listener_mapping.channel_to_listener_mapping[msg.channel_id].listeners.append(listener_type)
-                ds.send_message(msg.channel_id,'[%s] command listeners activated for this channel' % listener_type)
+                ds.send_message(msg.channel_id, '[%s] command listeners activated for this channel' % listener_type)
                 self.save()
         else:
-            ds.send_message(msg.channel_id,'No such listeners...')
+            ds.send_message(msg.channel_id, 'No such listeners...')
 
     def unregister_listener(self, msg: MessageCreate, ds: DiscordSession, listener_type: str = None):
         if listener_type in self.listeners:
             if listener_type in self.listener_mapping.channel_to_listener_mapping[msg.channel_id].listeners:
                 self.listener_mapping.channel_to_listener_mapping[msg.channel_id].listeners.remove(listener_type)
-                ds.send_message(msg.channel_id,'[%s] command disabled for this channel' % listener_type)
+                ds.send_message(msg.channel_id, '[%s] command disabled for this channel' % listener_type)
                 self.save()
             else:
-                ds.send_message(msg.channel_id,'[%s] command listeners were never activated for this channel' % listener_type)
+                ds.send_message(msg.channel_id,
+                                '[%s] command listeners were never activated for this channel' % listener_type)
         else:
-            ds.send_message(msg.channel_id,'No such listeners...')
+            ds.send_message(msg.channel_id, 'No such listeners...')
 
     def on_message(self, ds: DiscordSession, msg: MessageCreate):
         bot_id = ds.get_bot_info().id

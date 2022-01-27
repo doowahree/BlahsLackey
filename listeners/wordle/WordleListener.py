@@ -1,17 +1,12 @@
-import json
-import os
 import re
-import string
 from traceback import print_exc
-from typing import Dict, List, Tuple, Callable, AnyStr, Pattern, Union, Any
+from typing import Dict, Tuple
 
 from CommandParser import Command, TokenMatcherSet, TokenMatcher, CommandSet
 from DiscordGateway import DiscordSession
-from DiscordMessageTypes import MessageCreate, User, DiscordEmoji
-from listeners.wordle.WordlDb_pb2 import WordleSeason, WordlSeasonFileDb, UserRecord, GameRecord
+from DiscordMessageTypes import MessageCreate, DiscordEmoji
+from listeners.wordle.WordlDb_pb2 import UserRecord
 from listeners.wordle.WordleDatabase import WordleDatabase
-
-proper_format = re.compile('Wordle (\\w+\\d+) (\\w+|\\d+)/(\\d+) (.+)')
 
 
 class WordleListener(object):
