@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+
+
+message AvailableListeners {
+  repeated string listeners = 1;
+
+}
+
+message ListenerMapping {
+  map<string, AvailableListeners> channel_to_listener_mapping = 1;
+}

@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+
+message GameRecord {
+  optional string game = 1;
+  optional int32 attempts = 2;
+  optional int32 max_attempts = 3;
+  optional string extra_data = 4;
+}
+
+message UserRecord {
+  optional string last_known_name = 3;
+  map<string, GameRecord> classic_games = 1;
+  map<string, GameRecord> custom_games = 2;
+}
+
+message WordleSeason {
+  optional string name = 1;
+  optional string filename = 2;
+  map<string, UserRecord> users = 3;
+
+}
+
+message WordlSeasonFileDb {
+  optional string current_file = 1;
+  optional string current_season_name = 2;
+  map<string, string> filename_to_season_name = 3;
+}
