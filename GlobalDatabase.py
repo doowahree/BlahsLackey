@@ -17,6 +17,32 @@ class _GlobalDatabase(object):
         self.db_conn: psycopg2.extensions.connection = psycopg2.connect(os.environ['postgres_database_uri'])
         self._lock = threading.RLock()
 
+    def StoreKeyVal(self, key, val: str = None, val_bytes: bytes = None):
+        ret_val = []
+        with self._lock:
+            with self.db_conn.cursor() as curs:
+                c: psycopg2.extensions.cursor = curs
+                c.execute("""INSERT INTO key_val
+                VALUES(%s, %s, %s)
+                ON CONFLICT (key)
+                DO
+                    UPDATE SET val_str = EXCLUDED.val_str, val_bytes = EXCLUDED.val_bytes;
+                """, (key, val or '', val_bytes or bytes()))
+                self.db_conn.commit()
+        return ret_val
+
+    def LoadKeyVal(self, key):
+        ret_val = []
+        with self._lock:
+            with self.db_conn.cursor() as curs:
+                curs.execute("""
+                                SELECT *
+                                FROM key_val
+                                WHERE key = %s;
+                                """, (key,))
+                ret_val = curs.fetchone()
+        return ret_val if ret_val else None
+
     def StoreProto(self, key, proto: Message):
         ret_val = []
         with self._lock:

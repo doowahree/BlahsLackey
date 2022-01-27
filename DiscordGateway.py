@@ -6,6 +6,7 @@ from queue import Queue
 from sys import path
 from time import sleep
 import base64
+import hashlib
 from typing import List, Dict, Callable, Tuple
 
 import websocket
@@ -14,6 +15,7 @@ import requests
 from requests import Response
 
 from DiscordMessageTypes import MessageCreate, User, DiscordEmoji
+from GlobalDatabase import _GlobalDatabase
 
 ZLIB_SUFFIX = b'\x00\x00\xff\xff'
 ZLIB_INFLATOR = zlib.decompressobj()
@@ -58,9 +60,14 @@ class DiscordMessageQueuer(object):
 class DiscordSession(object):
     """Keeps sessions, responds to heartbeat requests, and sends heartbeats to keep conn alive."""
 
-    def __init__(self, bot_token: str):
+    def __init__(self, bot_token: str, global_db: _GlobalDatabase):
+        self.global_db = global_db
         self._ws: websocket.WebSocketApp = None
         self._bot_token: str = bot_token
+
+        # Not a good idea to store tokens in database, hash it for half assed attempt at security.
+        # But even if it's leaked, NBD.
+        self._lookup_token: str = 'LookupToken.' + hashlib.sha256(self._bot_token.encode('utf-8')).hexdigest()
         self._session_token: str = ''
         self._heartbeat_interval_ms: int = 45000
         self._last_seq_no: int = -1
@@ -84,13 +91,13 @@ class DiscordSession(object):
         self._ws.send(json.dumps(json_msg))
 
     def save_session(self):
-        with open('storage/cache.json', 'w') as f:
-            to_write = {
-                'session_token': self._session_token,
-                'last_seq_no': self._last_seq_no,
-                'bot_info': self.bot_info
-            }
-            json.dump(to_write, f)
+        to_write = {
+            'session_token': self._session_token,
+            'last_seq_no': self._last_seq_no,
+            'bot_info': self.bot_info
+        }
+
+        self.global_db.StoreKeyVal(self._lookup_token, json.dumps(to_write))
 
     def heartbeat(self):
         """Sends a heartbeat and queues a new timer to send the next heartbeat."""
@@ -122,12 +129,12 @@ class DiscordSession(object):
 
     def resume(self):
         """Tries to resume using stored session id."""
-        if os.path.exists('storage/cache.json') and os.path.getsize('storage/cache.json') > 10:
-            with open('storage/cache.json') as f:
-                saved_data = json.load(f)
-                self._session_token = saved_data['session_token']
-                self._last_seq_no = saved_data['last_seq_no']
-                self.bot_info = saved_data['bot_info']
+        resume_token = self.global_db.LoadKeyVal(self._lookup_token)
+        if resume_token:
+            saved_data = json.loads(resume_token[1])
+            self._session_token = saved_data['session_token']
+            self._last_seq_no = saved_data['last_seq_no']
+            self.bot_info = saved_data['bot_info']
             self.send({
                 'op': 6,
                 'd': {
@@ -163,17 +170,16 @@ class DiscordSession(object):
         elif payload['op'] == 0:
             self._last_seq_no = payload['s']
             event_type = payload['t']
+
             if event_type == 'READY':
                 self.bot_info = payload['d']
                 self._session_token = payload['d']['session_id']
-                self.save_session()
-                # self.send_message('')
             if event_type == 'MESSAGE_CREATE':
                 msg = MessageCreate(payload)
                 if event_type in self.responders:
                     for item in self.responders[event_type]:
                         item(self, msg)
-                pass
+            self.save_session()
 
         print(payload)
 
