@@ -3,7 +3,7 @@ from typing import Tuple, Optional
 
 from DiscordMessageTypes import User
 from GlobalDatabase import GlobalDatabase, _GlobalDatabase
-from listeners.wordle.WordlDb_pb2 import WordleSeason, WordlSeasonFileDb, GameRecord, UserRecord
+from databases.wordle.WordlDb_pb2 import WordleSeason, WordlSeasonFileDb, GameRecord, UserRecord
 
 valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 

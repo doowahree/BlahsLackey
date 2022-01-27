@@ -5,8 +5,8 @@ from typing import Dict, Tuple
 from CommandParser import Command, TokenMatcherSet, TokenMatcher, CommandSet
 from DiscordGateway import DiscordSession
 from DiscordMessageTypes import MessageCreate, DiscordEmoji
-from listeners.wordle.WordlDb_pb2 import UserRecord
-from listeners.wordle.WordleDatabase import WordleDatabase
+from databases.wordle.WordlDb_pb2 import UserRecord
+from databases.wordle.WordleDatabase import WordleDatabase
 
 
 class WordleListener(object):

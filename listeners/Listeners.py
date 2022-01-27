@@ -6,7 +6,7 @@ from DiscordGateway import DiscordSession
 from DiscordMessageTypes import MessageCreate
 from GlobalDatabase import _GlobalDatabase
 from listeners.ListenerMapping_pb2 import ListenerMapping
-from listeners.wordle.WordleDatabase import WordleDatabase
+from databases.wordle.WordleDatabase import WordleDatabase
 from listeners.wordle.WordleListener import WordleListener
 
 

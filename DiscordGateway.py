@@ -73,6 +73,7 @@ class DiscordSession(object):
         self._last_seq_no: int = -1
         self._heartbeat_timer: threading.Timer = None
         self._queue_discord = DiscordMessageQueuer()
+        self._save_time: threading.Timer = None
 
         # Http related
         self._header = {
@@ -90,7 +91,8 @@ class DiscordSession(object):
     def send(self, json_msg):
         self._ws.send(json.dumps(json_msg))
 
-    def save_session(self):
+    def _save_session(self):
+        print('Saving session')
         to_write = {
             'session_token': self._session_token,
             'last_seq_no': self._last_seq_no,
@@ -98,6 +100,16 @@ class DiscordSession(object):
         }
 
         self.global_db.StoreKeyVal(self._lookup_token, json.dumps(to_write))
+
+    def save_session(self):
+        """Schedules a save event.
+
+        We schedule a save event to happen 5 seconds later. If a new save request comes, that
+        """
+        if self._save_time:
+            self._save_time.cancel()
+        self._save_time = threading.Timer(5, self._save_session)
+        self._save_time.start()
 
     def heartbeat(self):
         """Sends a heartbeat and queues a new timer to send the next heartbeat."""
