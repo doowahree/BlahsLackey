@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     ds = DiscordSession(os.environ['bot_token'])
     ds.responders['MESSAGE_CREATE'] = [AllListeners(proto_store=GlobalDatabase()).on_message]
-    a = threading.Thread(target=app.run, kwargs={'port': 5000})
+    a = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5000})
     a.start()
     ds.run()
     # print_hi('PyCharm')
