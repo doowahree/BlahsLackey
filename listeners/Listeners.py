@@ -21,12 +21,17 @@ class AllListeners(object):
             'Wordle': WordleListener(WordleDatabase(proto_store=proto_store))
         }
         self.commands = CommandSet([
+            Command([self.help],
+                    TokenMatcherSet([TokenMatcher('help')]),
+                    help='This command'),
             Command([self.register_listener],
                     TokenMatcherSet([TokenMatcher('listen'),
-                                     TokenMatcher(re.compile('[\\w]{,20}'), token_parsing=('listener_type', str))])),
+                                     TokenMatcher(re.compile('[\\w]{,20}'), token_parsing=('listener_type', str))]),
+                    help='Registers this channel to listen to the commands of: [%s]' % ','.join(self.listeners.keys())),
             Command([self.unregister_listener],
                     TokenMatcherSet([TokenMatcher('unlisten'),
-                                     TokenMatcher(re.compile('[\\w]{,20}'), token_parsing=('listener_type', str))])),
+                                     TokenMatcher(re.compile('[\\w]{,20}'), token_parsing=('listener_type', str))]),
+                    help='Registers this channel to listen to the commands of: [%s]' % ','.join(self.listeners.keys())),
         ])
 
     def load(self):
@@ -39,6 +44,16 @@ class AllListeners(object):
 
     def save(self):
         self.proto_store.StoreProto(AllListeners.METADATA_NAME, self.listener_mapping)
+
+    def help(self, msg: MessageCreate, ds: DiscordSession):
+        embeds = [{
+            'title': '@AegisBot <commands>',
+            'fields':
+                [{'name': command, 'value': help_str} for help_str, command
+                 in sorted(self.commands.help_strings())]
+        }]
+        ds.send_message(msg.channel_id,
+                        '', embeds=embeds)
 
     def register_listener(self, msg: MessageCreate, ds: DiscordSession, listener_type: str = None):
         if listener_type in self.listeners:

@@ -31,6 +31,12 @@ class TokenMatcher(object):
             else:
                 return False, text
 
+    def help_string(self) -> str:
+        val = self.pattern.pattern + self.descriptor
+        if self.token_parsing:
+            val += '<%s>' % self.token_parsing[0]
+        return '[%s]' % val if self.is_optional else val
+
 
 class TokenMatcherSet(object):
     def __init__(self, matchers: List[TokenMatcher]):
@@ -45,11 +51,15 @@ class TokenMatcherSet(object):
                 return False, {}, text
         return True, possible_arg_holder, remaining_text
 
+    def help_string(self) -> str:
+        return ' '.join([t.help_string() for t in self.matchers])
+
 
 class Command(object):
-    def __init__(self, commands: List[Callable], *matcher_set):
+    def __init__(self, commands: List[Callable], *matcher_set, help='N/A'):
         self.commands: List[Callable] = commands
         self.matcher_sets: List[TokenMatcherSet] = matcher_set
+        self.help = help
 
     def is_eligible(self, text: str) -> Tuple[bool, Dict[str, Any], str]:
         smallest = (False, {}, text)
@@ -58,6 +68,12 @@ class Command(object):
             if matched and len(remaining_text) < len(smallest[2]):
                 smallest = (matched, args, remaining_text)
         return smallest
+
+    def help_string(self) -> Tuple[str, str]:
+        allowed_commands = '|'.join(m.help_string() for m in self.matcher_sets)
+        return (self.help, allowed_commands)
+
+
 
 
 class CommandSet(object):
@@ -83,3 +99,6 @@ class CommandSet(object):
             args.update(additional_args)
             for command in command.commands:
                 command(**args)
+
+    def help_strings(self) -> List[Tuple[str, str]]:
+        return [c.help_string() for c in self.commands]

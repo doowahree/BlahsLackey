@@ -13,11 +13,16 @@ class WordleListener(object):
     def __init__(self, wordle_db: WordleDatabase):
         self.wordle_db = wordle_db
         self.commands = CommandSet([
+            Command([self.help],
+                    TokenMatcherSet([TokenMatcher('help')]),
+                    help='This command'),
             Command([self.print_season],
-                    TokenMatcherSet([TokenMatcher('season'), TokenMatcher('current', is_optional=True)])),
+                    TokenMatcherSet([TokenMatcher('season'), TokenMatcher('current', is_optional=True)]),
+                    help='Prints the current season'),
             Command([self.change_season],
                     TokenMatcherSet([TokenMatcher('season'), TokenMatcher('change'),
-                                     TokenMatcher(re.compile('[\\w\\d]{,40}'), token_parsing=('season', str))])),
+                                     TokenMatcher(re.compile('[\\w\\d]{,40}'), token_parsing=('season', str))]),
+                    help='Changes the season to <season>'),
             Command([self.register_custom],
                     TokenMatcherSet(
                         [TokenMatcher('register', is_optional=True),
@@ -30,7 +35,8 @@ class WordleListener(object):
                                       is_optional=True,
                                       token_parsing=('metadata', str))
                          ]
-                    )),
+                    ),
+                    help='Registers <game_id> with <attempts>/<max_attempts>. <metadata> is currently unused.'),
             Command([self.update_custom],
                     TokenMatcherSet(
                         [TokenMatcher('update'),
@@ -43,7 +49,8 @@ class WordleListener(object):
                                       is_optional=True,
                                       token_parsing=('metadata', str))
                          ]
-                    )),
+                    ),
+                    help='Updates <game_id> with <attempts>/<max_attempts>. <metadata> is currently unused.'),
             Command([self.delete_record],
                     TokenMatcherSet(
                         [TokenMatcher('delete'),
@@ -53,12 +60,24 @@ class WordleListener(object):
             Command([self.print_stats],
                     TokenMatcherSet(
                         [TokenMatcher('stats')]
-                    )),
+                    ),
+                    help='Prints the stats for yourself - limited to last x games.'),
             Command([self.leaderboard],
                     TokenMatcherSet(
                         [TokenMatcher('leaderboard')]
-                    ))
+                    ),
+                    help='Prints the leaderboard.')
         ])
+
+    def help(self, msg: MessageCreate, ds: DiscordSession):
+        embeds = [{
+            'title': 'Wordle <commands>',
+            'fields':
+                [{'name': command, 'value': help_str} for help_str, command
+                 in sorted(self.commands.help_strings())]
+        }]
+        ds.send_message(msg.channel_id,
+                        '', embeds=embeds)
 
     @staticmethod
     def int_or_neg_one(item: str):
@@ -79,7 +98,6 @@ class WordleListener(object):
 
     def register_custom(self, msg: MessageCreate, ds: DiscordSession, game_id: str, attempts: int, max_attempts: int,
                         metadata: str = ''):
-        print('Registering custom???')
         metadata = metadata or ''
         is_new, record = self.wordle_db.register_record(msg.author, game_id, attempts, max_attempts,
                                                         None if not metadata.startswith('@!@') else metadata)
