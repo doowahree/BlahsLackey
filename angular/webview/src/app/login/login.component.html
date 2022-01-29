@@ -1,0 +1,25 @@
+<div *ngIf="!isLoggedIn; else elseBlock">
+  <p>In order to provide data for the correct user, needs OAuthToken from Discord in order to get your user id.</p>
+  <p>Click the [Login with Discord] button below to provide the "Identity" permission for yourself.</p>
+  <div *ngIf="readyToIdentify; else spinnerBlock">
+    <button mat-raised-button color="primary" (click)="login()">Login w/ Discord</button>
+  </div>
+  <ng-template #spinnerBlock>
+    <mat-spinner></mat-spinner>
+  </ng-template>
+</div>
+<ng-template #elseBlock>
+  <p>
+    <mat-toolbar color="primary">
+      <span>Logged in as {{username}} </span>
+    </mat-toolbar>
+  </p>
+</ng-template>
+
+<div *ngIf="clientIdObservable | async as cid">
+  {{cid}}
+</div>
+
+<div *ngIf="isLoggedIn">
+  <app-stats></app-stats>
+</div>

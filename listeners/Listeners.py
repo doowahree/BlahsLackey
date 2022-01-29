@@ -4,21 +4,20 @@ from traceback import print_exc
 from CommandParser import Command, CommandSet, TokenMatcherSet, TokenMatcher
 from DiscordGateway import DiscordSession
 from DiscordMessageTypes import MessageCreate
-from GlobalDatabase import _GlobalDatabase
+from databases.DatabaseRegistry import DatabaseRegistry
 from listeners.ListenerMapping_pb2 import ListenerMapping
-from databases.wordle.WordleDatabase import WordleDatabase
 from listeners.wordle.WordleListener import WordleListener
 
 
 class AllListeners(object):
     METADATA_NAME = 'listeners.metadata'
 
-    def __init__(self, proto_store: _GlobalDatabase):
-        self.proto_store = proto_store
+    def __init__(self, db_registry: DatabaseRegistry):
+        self.db_registry = db_registry
         self.listener_mapping = ListenerMapping()
         self.load()
         self.listeners = {
-            'Wordle': WordleListener(WordleDatabase(proto_store=proto_store))
+            'Wordle': WordleListener(db_registry.wordle_db)
         }
         self.commands = CommandSet([
             Command([self.help],
@@ -35,7 +34,7 @@ class AllListeners(object):
         ])
 
     def load(self):
-        metadata = self.proto_store.LoadProto(AllListeners.METADATA_NAME)
+        metadata = self.db_registry.proto_store.LoadProto(AllListeners.METADATA_NAME)
         if metadata:
             self.listener_mapping = ListenerMapping()
             self.listener_mapping.ParseFromString(metadata)
@@ -43,7 +42,7 @@ class AllListeners(object):
             print('No original listener mapping, doing nothing.')
 
     def save(self):
-        self.proto_store.StoreProto(AllListeners.METADATA_NAME, self.listener_mapping)
+        self.db_registry.proto_store.StoreProto(AllListeners.METADATA_NAME, self.listener_mapping)
 
     def help(self, msg: MessageCreate, ds: DiscordSession):
         embeds = [{

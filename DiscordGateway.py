@@ -226,6 +226,32 @@ class DiscordSession(object):
         print('Close receieved, attempting to reconnect')
         print(close_msg)
 
+    def proxy_oauth(self, protocol: str, redirect_uri: str, code: str):
+        print(redirect_uri)
+        # http://192.168.1.3:5123/
+        print(f'{protocol}//{redirect_uri}')
+        print(code)
+        r = requests.post('https://discord.com/api/v9/oauth2/token', data={
+            'client_id': os.environ['bot_client_id'],
+            'client_secret': os.environ['bot_client_secret'],
+            'grant_type': 'authorization_code',
+            'code': code,
+            # http://192.168.1.3:5123/
+            # f'{protocol}//{redirect_uri}'
+            'redirect_uri': f'{protocol}//{redirect_uri}'},
+                      headers={
+                          'Content-Type': 'application/x-www-form-urlencoded'
+                      }
+                      )
+        access_token_obj = json.loads(r.text)
+        identify = requests.get('https://discord.com/api/v9/users/@me',
+                     headers={
+                         'Authorization': 'Bearer %s' % access_token_obj['access_token']
+                     })
+
+        access_token_obj['user'] = json.loads(identify.text)
+        return access_token_obj
+
 
 def on_message(ws, message):
     payload = json.loads(message)
