@@ -16,6 +16,9 @@ class WordleListener(object):
             Command([self.help],
                     TokenMatcherSet([TokenMatcher('help')]),
                     help='This command'),
+            Command([self.print_weblink],
+                    TokenMatcherSet([TokenMatcher('link')]),
+                    help='Prints Wordle link and website link.'),
             Command([self.print_season],
                     TokenMatcherSet([TokenMatcher('season'), TokenMatcher('current', is_optional=True)]),
                     help='Prints the current season'),
@@ -56,7 +59,8 @@ class WordleListener(object):
                         [TokenMatcher('delete'),
                          TokenMatcher(re.compile('[\\w\\d]+'), token_parsing=('game_id', str))
                          ]
-                    )),
+                    ),
+                    help='Deletes <game_id> from the record.'),
             Command([self.print_stats],
                     TokenMatcherSet(
                         [TokenMatcher('stats')]
@@ -68,6 +72,11 @@ class WordleListener(object):
                     ),
                     help='Prints the leaderboard.')
         ])
+
+    def print_weblink(self, msg: MessageCreate, ds: DiscordSession):
+        ds.send_message(msg.channel_id,
+                        'Play the game at: https://www.powerlanguage.co.uk/wordle/ \n'
+                        'See full stats at: https://blahs-discord-bots.herokuapp.com/')
 
     def help(self, msg: MessageCreate, ds: DiscordSession):
         embeds = [{
