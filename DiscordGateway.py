@@ -24,7 +24,7 @@ ZLIB_INFLATOR = zlib.decompressobj()
 class DiscordMessageQueuer(object):
     """Discord can only handle up to 50 api calls per second."""
 
-    def __init__(self, rate_limit_qps: int = 10):
+    def __init__(self, rate_limit_qps: int = 3):
         """
         :param rate_limit_qps: Default of 40 to be well within limit.
         """
