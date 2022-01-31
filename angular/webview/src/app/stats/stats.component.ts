@@ -14,6 +14,19 @@ interface TableRowData {
   gameId: string;
   attempts: number;
   maxAttempts: number;
+  avg: number;
+  fails: number;
+}
+
+interface AverageData {
+  data: {
+    [key: string]: {
+      game_id: string,
+      total: number,
+      fails: number,
+      counts: number
+    }
+  }
 }
 
 @Component({
@@ -43,6 +56,7 @@ export class StatsComponent implements OnInit {
       columns: [
         {title: "Game Id", field: "gameId", width: 150, sorter: this.sortGameId},
         {title: "Attempt", field: "attempts", hozAlign: "left", formatter: this.formatIconsCount},
+        {title: "Average", field: "avg", hozAlign: "left"},
       ]
     });
     this.createSvg();
@@ -84,14 +98,16 @@ export class StatsComponent implements OnInit {
       .attr("transform", "translate(" + this.margin + "," + this.margin + ")");
   }
 
-  private fillStatsTable(user_id: string): void {
+  private fillStatsTable(user_id: string, avgData: AverageData): void {
     const selfRecord = this.currentSeason!.users[user_id];
     const tableData: Array<TableRowData> = [];
     Object.entries(selfRecord.classicGames).forEach(([key, value]) => {
       tableData.push({
         gameId: value.game,
         attempts: value.attempts,
-        maxAttempts: value.maxAttempts
+        maxAttempts: value.maxAttempts,
+        avg: avgData.data[value.game].total / avgData.data[value.game].counts,
+        fails: avgData.data[value.game].fails
       })
     });
     this.statsTable!.setData(tableData).then(function () {
@@ -109,23 +125,42 @@ export class StatsComponent implements OnInit {
         return;
       }
 
-      this.fillStatsTable(userId);
-
+      const avgData: AverageData = {
+        data: {}
+      }
       let xCounts: { [key: string]: number } = {};
       let xKeys: Array<string> = [];
       let maxYVal = 5;
-      Object.entries(selfRecord.classicGames).forEach(([key, value]) => {
-        let itemKey = `${value.attempts}`;
-        if (!(itemKey in xCounts)) {
-          xCounts[itemKey] = 0;
-          xKeys.push(itemKey);
-        }
-        xCounts[itemKey]++;
-        if (xCounts[itemKey] >= maxYVal) {
-          maxYVal = maxYVal + 5;
-        }
+      Object.entries(this.currentSeason.users).forEach(([loopUserId, userRecord]) => {
+        Object.entries(userRecord.classicGames).forEach(([gameId, gameRecord]) => {
+          if (!(gameId in avgData)) {
+            avgData.data[gameId] = {
+              game_id: gameId,
+              total: 0,
+              fails: 0,
+              counts: 0
+            }
+          }
+          avgData.data[gameId].total += gameRecord.attempts >= 0 ? gameRecord.attempts : 0;
+          avgData.data[gameId].fails += gameRecord.attempts < 0 ? 1 : 0;
+          avgData.data[gameId].counts += 1;
+
+          if (loopUserId == userId) {
+            let itemKey = `${gameRecord.attempts}`;
+            if (!(itemKey in xCounts)) {
+              xCounts[itemKey] = 0;
+              xKeys.push(itemKey);
+            }
+            xCounts[itemKey]++;
+            if (xCounts[itemKey] >= maxYVal) {
+              maxYVal = maxYVal + 5;
+            }
+          }
+        });
       });
       xKeys.sort();
+
+      this.fillStatsTable(userId, avgData);
 
       const x = d3.scaleBand()
         .range([0, this.width])
