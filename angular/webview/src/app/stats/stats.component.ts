@@ -3,14 +3,17 @@ import * as d3 from 'd3';
 import * as wordleDb from '../../proto/WordlDb';
 import {CredentialsProviderService} from "../credentials-provider.service";
 import {HttpClient} from "@angular/common/http";
+import {Tabulator as TabulatorNamespace, TabulatorFull as Tabulator} from 'tabulator-tables';
+
 
 interface ProtoDataResponse {
   data: string;
 }
 
-interface AttemptsCount {
-  attempts: string;
-  counts: number;
+interface TableRowData {
+  gameId: string;
+  attempts: number;
+  maxAttempts: number;
 }
 
 @Component({
@@ -20,10 +23,12 @@ interface AttemptsCount {
 })
 export class StatsComponent implements OnInit {
   private svg?: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private statsTable?: Tabulator;
   private margin = 50;
   private width = 750 - (this.margin * 2);
   private height = 400 - (this.margin * 2);
   private currentSeason?: wordleDb.WordleSeason;
+  private static readonly numberExtractor = /\d+/;
 
   private readonly encoder: TextEncoder = new TextEncoder();
 
@@ -31,11 +36,42 @@ export class StatsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.createSvg();
-    this.http.get<ProtoDataResponse>('/api/wordle/get_season').subscribe((data) => {
-      this.currentSeason = wordleDb.WordleSeason.decode(this.encoder.encode(data.data));
-      this.drawSeason();
+    this.statsTable = new Tabulator('#statsTable', {
+      height: 400,
+      layout: "fitColumns",
+      data: [],
+      columns: [
+        {title: "Game Id", field: "gameId", width: 150, sorter: this.sortGameId},
+        {title: "Attempt", field: "attempts", hozAlign: "left", formatter: this.formatIconsCount},
+      ]
     });
+    this.createSvg();
+    setTimeout(() => {
+      this.http.get<ProtoDataResponse>('/api/wordle/get_season').subscribe((data) => {
+        this.currentSeason = wordleDb.WordleSeason.decode(this.encoder.encode(data.data));
+        this.drawSeason();
+        this.statsTable?.setSort('gameId', 'desc');
+      });
+    }, 500);
+
+  }
+
+  private sortGameId(a: string, b: string, aRow: any, bRow: any, column: TabulatorNamespace.ColumnComponent, dir: string, sorterParams: any) {
+    const aNumStr = StatsComponent.numberExtractor.exec(a) || ['0'];
+    const bNumStr = StatsComponent.numberExtractor.exec(b) || ['0'];
+    return Number.parseInt(aNumStr[0]) - Number.parseInt(bNumStr[0]);
+
+  }
+
+  private formatIconsCount(cell: TabulatorNamespace.CellComponent, formatterParams: {}, onRendered: any) {
+    const data = cell.getData() as TableRowData;
+    const identifier = [];
+    for (let i = 1; i <= data.maxAttempts; i++) {
+
+      identifier.push(i < (data.attempts > 0 ? data.attempts : data.maxAttempts) ? 'X' : 'O');
+    }
+    identifier.push(`(${data.attempts}/${data.maxAttempts})`)
+    return `<span class="selfStatsRow">${identifier.join('')}</span>`
   }
 
   private createSvg(): void {
@@ -48,12 +84,32 @@ export class StatsComponent implements OnInit {
       .attr("transform", "translate(" + this.margin + "," + this.margin + ")");
   }
 
+  private fillStatsTable(user_id: string): void {
+    const selfRecord = this.currentSeason!.users[user_id];
+    const tableData: Array<TableRowData> = [];
+    Object.entries(selfRecord.classicGames).forEach(([key, value]) => {
+      tableData.push({
+        gameId: value.game,
+        attempts: value.attempts,
+        maxAttempts: value.maxAttempts
+      })
+    });
+    this.statsTable!.setData(tableData).then(function () {
+    })
+      .catch(function (error) {
+        console.log(error);
+      });
+  }
+
   private drawSeason(): void {
     if (this.currentSeason) {
-      const selfRecord = this.currentSeason.users[this.credentials.getUserToken()!.user.id];
+      const userId = `${this.credentials.getUserToken()!.user.id}`;
+      const selfRecord = this.currentSeason.users[userId];
       if (!selfRecord || !this.svg) {
         return;
       }
+
+      this.fillStatsTable(userId);
 
       let xCounts: { [key: string]: number } = {};
       let xKeys: Array<string> = [];
@@ -102,13 +158,14 @@ export class StatsComponent implements OnInit {
         .attr("height", (d) => this.height - y(d.counts))
         .attr("fill", "#d04a35");
 
+
       this.svg.append("text")
         .attr("x", this.width / 2)
         .attr("y", 0)
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
         .style("text-decoration", "underline")
-        .text("Attempt counts");
+        .text("Attempt counts distribution");
     }
 
   }

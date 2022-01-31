@@ -8,6 +8,8 @@ from DiscordMessageTypes import MessageCreate, DiscordEmoji
 from databases.wordle.WordlDb_pb2 import UserRecord
 from databases.wordle.WordleDatabase import WordleDatabase
 
+_NUMBER_SEARCHER = re.compile('\\d+')
+
 
 class WordleListener(object):
     def __init__(self, wordle_db: WordleDatabase):
@@ -30,9 +32,9 @@ class WordleListener(object):
                     TokenMatcherSet(
                         [TokenMatcher('register', is_optional=True),
                          TokenMatcher(re.compile('[\\w\\d]+'), token_parsing=('game_id', str)),
-                         TokenMatcher(re.compile('[\\w\\d]+'), token_parsing=('attempts', self.int_or_neg_one)),
+                         TokenMatcher(re.compile('[\\w\\d]{,5}'), token_parsing=('attempts', self.int_or_neg_one)),
                          TokenMatcher('/'),
-                         TokenMatcher(re.compile('\\d+'),
+                         TokenMatcher(re.compile('\\d{,5}'),
                                       token_parsing=('max_attempts', int)),
                          TokenMatcher(re.compile('.{,50}'),
                                       is_optional=True,
@@ -44,9 +46,9 @@ class WordleListener(object):
                     TokenMatcherSet(
                         [TokenMatcher('update'),
                          TokenMatcher(re.compile('[\\w\\d]+'), token_parsing=('game_id', str)),
-                         TokenMatcher(re.compile('[\\w\\d]+'), token_parsing=('attempts', self.int_or_neg_one)),
+                         TokenMatcher(re.compile('[\\w\\d]{,5}'), token_parsing=('attempts', self.int_or_neg_one)),
                          TokenMatcher('/'),
-                         TokenMatcher(re.compile('\\d+'),
+                         TokenMatcher(re.compile('\\d{,5}'),
                                       token_parsing=('max_attempts', int)),
                          TokenMatcher(re.compile('.{,50}'),
                                       is_optional=True,
@@ -135,6 +137,13 @@ class WordleListener(object):
         else:
             ds.attach_reaction(msg, DiscordEmoji.symbol_nope)
 
+    @staticmethod
+    def extract_number(item: str):
+        number = _NUMBER_SEARCHER.search(item)
+        if number:
+            return int(number[0])
+        return 0
+
     def print_stats(self, msg: MessageCreate, ds: DiscordSession, season: str = None):
         ur: UserRecord = self.wordle_db.wordle_season.users[msg.author.id]
         topic = 'Status for [%s] - Last 9 games' % msg.author.username
@@ -144,14 +153,16 @@ class WordleListener(object):
         classic_attempt_total = 0
         custom_attempt_total = 0
         embeds = []
-        for game, rec in sorted(ur.classic_games.items(), key=lambda k: k[1].game, reverse=True):
+        for game, rec in sorted(ur.classic_games.items(), key=lambda k: WordleListener.extract_number(k[1].game),
+                                reverse=True):
             if rec.attempts not in classic_games_attempts:
                 classic_games_attempts[rec.attempts] = 0
             classic_games_attempts[rec.attempts] += 1
             classic_attempt_total += rec.attempts if rec.attempts >= 0 else (rec.max_attempts + 1)
             if len(classic_games) < 9:
                 classic_games.append(rec)
-        for game, rec in sorted(ur.custom_games.items(), key=lambda k: k[1].game, reverse=True):
+        for game, rec in sorted(ur.custom_games.items(), key=lambda k: WordleListener.extract_number(k[1].game),
+                                reverse=True):
             custom_attempt_total += rec.attempts if rec.attempts >= 0 else (rec.max_attempts + 1)
             if len(classic_games) < 9:
                 custom_games.append(rec)
