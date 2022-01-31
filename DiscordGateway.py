@@ -46,9 +46,11 @@ class DiscordMessageQueuer(object):
             popped_item = self.queue.pop()
             print('Handling', popped_item)
             response: Response = popped_item[0](*popped_item[1], **popped_item[2])
-            if response.status_code / 100 != 2:
+            if int(response.status_code / 100) != 2:
                 print(response)
                 print(response.text)
+                if ('retry after' in response.text):
+                    self.queue.insert(0, popped_item)
             with self.lock:
                 if len(self.queue):
                     self.timer = threading.Timer(self.delay_between_calls, self._handle)
