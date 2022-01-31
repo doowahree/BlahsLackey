@@ -196,11 +196,9 @@ class WordleListener(object):
             games_played = 0
             attempts = 0
             for game, rec in sorted(ur.classic_games.items(), key=lambda k: k[1].game, reverse=True):
-                if game.startswith('_'):
-                    continue
                 attempts += (rec.attempts if rec.attempts >= 0 else (rec.max_attempts + 1))
                 games_played += 1
-                score += rec.max_attempts - (rec.attempts if rec.attempts >= 0 else (rec.max_attempts + 1))
+                score += 1 + rec.max_attempts - (rec.attempts if rec.attempts >= 0 else (rec.max_attempts + 1))
 
             all_scores['%s(%s)' % (ur.last_known_name, user_id)] = (score, games_played, attempts / (games_played or 1))
 
