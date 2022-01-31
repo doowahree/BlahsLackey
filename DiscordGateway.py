@@ -50,7 +50,7 @@ class DiscordMessageQueuer(object):
                 if int(response.status_code / 100) != 2:
 
                     print(response.status_code, ' ', response.text)
-                    if ('retry after' in response.text):
+                    if 'retry_after' in response.text:
                         print('Readding retry')
                         self.queue.insert(0, popped_item)
                 if len(self.queue):
