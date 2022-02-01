@@ -11,6 +11,7 @@ import {MatButtonModule} from "@angular/material/button";
 import {MatProgressSpinnerModule} from "@angular/material/progress-spinner";
 import {MatTabsModule} from "@angular/material/tabs";
 import {StatsComponent} from "./stats/stats.component";
+import {MatSelectModule} from "@angular/material/select";
 
 @NgModule({
   declarations: [
@@ -26,7 +27,8 @@ import {StatsComponent} from "./stats/stats.component";
     MatToolbarModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-    MatTabsModule
+    MatTabsModule,
+    MatSelectModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

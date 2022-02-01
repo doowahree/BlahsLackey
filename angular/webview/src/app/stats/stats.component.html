@@ -1,4 +1,12 @@
 
-
+<div>Stats for {{season}}</div>
+<mat-form-field appearance="fill">
+  <mat-label>Select an option</mat-label>
+  <mat-select [(value)]="selectedUser">
+    <mat-option *ngFor="let user of availableUsers" [value]="user.id">
+      {{user.display}}
+    </mat-option>
+  </mat-select>
+</mat-form-field>
 <figure id="selfStats"></figure>
 <figure id="statsTable"></figure>

@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, Input, OnInit} from '@angular/core';
 import * as d3 from 'd3';
 import * as wordleDb from '../../proto/WordlDb';
 import {CredentialsProviderService} from "../credentials-provider.service";
@@ -36,14 +36,30 @@ interface AverageData {
 })
 export class StatsComponent implements OnInit {
   private svg?: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+  private svgCanvas?: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
   private statsTable?: Tabulator;
   private margin = 50;
-  private width = 750 - (this.margin * 2);
-  private height = 400 - (this.margin * 2);
+  private width = 500 - (this.margin * 2);
+  private height = 250 - (this.margin * 2);
   private currentSeason?: wordleDb.WordleSeason;
   private static readonly numberExtractor = /\d+/;
 
   private readonly encoder: TextEncoder = new TextEncoder();
+
+
+  _selectedUser: string = '';
+  get selectedUser(): string {
+    return this._selectedUser;
+  }
+
+  @Input('selectedUser')
+  set selectedUser(val: string) {
+    this._selectedUser = val;
+    this.drawSeason(this._selectedUser);
+  }
+
+  availableUsers: Array<{ display: string, id: string }> = [];
+  season: string = '';
 
   constructor(private readonly credentials: CredentialsProviderService, private readonly http: HttpClient) {
   }
@@ -63,8 +79,9 @@ export class StatsComponent implements OnInit {
     setTimeout(() => {
       this.http.get<ProtoDataResponse>('/api/wordle/get_season').subscribe((data) => {
         this.currentSeason = wordleDb.WordleSeason.decode(this.encoder.encode(data.data));
-        this.drawSeason();
+        this.selectedUser = `${this.credentials.getUserToken()!.user.id}`;
         this.statsTable?.setSort('gameId', 'desc');
+        this.season = this.currentSeason.name;
       });
     }, 500);
 
@@ -117,13 +134,14 @@ export class StatsComponent implements OnInit {
       });
   }
 
-  private drawSeason(): void {
-    if (this.currentSeason) {
-      const userId = `${this.credentials.getUserToken()!.user.id}`;
+  private drawSeason(userId: string): void {
+    if (this.currentSeason && userId) {
       const selfRecord = this.currentSeason.users[userId];
       if (!selfRecord || !this.svg) {
         return;
       }
+      this.svgCanvas?.remove();
+      this.svgCanvas = this.svg.append('g');
 
       const avgData: AverageData = {
         data: {}
@@ -131,7 +149,12 @@ export class StatsComponent implements OnInit {
       let xCounts: { [key: string]: number } = {};
       let xKeys: Array<string> = [];
       let maxYVal = 5;
+      this.availableUsers = [];
       Object.entries(this.currentSeason.users).forEach(([loopUserId, userRecord]) => {
+        this.availableUsers.push({
+          display: userRecord.lastKnownName,
+          id: loopUserId
+        })
         Object.entries(userRecord.classicGames).forEach(([gameId, gameRecord]) => {
           if (!(gameId in avgData)) {
             avgData.data[gameId] = {
@@ -167,7 +190,7 @@ export class StatsComponent implements OnInit {
         .domain(xKeys)
         .padding(0.2);
 
-      this.svg.append("g")
+      this.svgCanvas.append("g")
         .attr("transform", "translate(0," + this.height + ")")
         .call(d3.axisBottom(x))
         .selectAll("text")
@@ -178,10 +201,10 @@ export class StatsComponent implements OnInit {
         .domain([0, maxYVal])
         .range([this.height, 0]);
 
-      this.svg.append("g")
+      this.svgCanvas.append("g")
         .call(d3.axisLeft(y));
 
-      this.svg.selectAll("bars")
+      this.svgCanvas.selectAll("bars")
         .data(Object.entries(xCounts).map(([key, val]) => {
           return {attempts: key, counts: val}
         }))
@@ -194,7 +217,7 @@ export class StatsComponent implements OnInit {
         .attr("fill", "#d04a35");
 
 
-      this.svg.append("text")
+      this.svgCanvas.append("text")
         .attr("x", this.width / 2)
         .attr("y", 0)
         .attr("text-anchor", "middle")
