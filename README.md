@@ -8,6 +8,16 @@ Discord's direct gateway apis.
 
 Horrible code quality and barely any comments. May add comments if I get more motivation.
 
+# Running locally
+
+## Server
+
+Well, I have an app.json but........ don't have an easy way to run locally YET.
+
+## Angular client
+
+SOON to be coming? Basically you should be able to start angular client and point to production server.
+
 # Main format for listeners
 
 Each listener is under `/listeners` directory. All listener should be registered inside the `Listeners.py` with an

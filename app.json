@@ -1,0 +1,29 @@
+{
+  "name": "AegisBot",
+  "description": "AegisBot for Aegis lads.",
+  "repository": "https://github.com/doowahree/BlahsLackey",
+  "logo": "https://node-js-sample.herokuapp.com/node.png",
+  "keywords": [
+    "node",
+    "express",
+    "static"
+  ],
+  "env": {
+    "postgres_database_uri": {
+      "description": "A full URI of form postgrers://table:.....",
+      "generator": "secret"
+    },
+    "bot_token": {
+      "description": "Discord bot token you created.",
+      "value": "token"
+    },
+    "bot_client_secret": {
+      "description": "The Discord bot client secret.",
+      "value": "token"
+    },
+    "bot_client_id": {
+      "description": "The Discord bot client id.",
+      "value": "token"
+    }
+  }
+}
