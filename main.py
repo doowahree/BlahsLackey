@@ -2,7 +2,7 @@
 import os
 import threading
 
-from flask import Flask, current_app
+from flask import Flask, current_app, request
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
@@ -38,6 +38,21 @@ if __name__ == '__main__':
     @app.route('/<path:path>')
     def index(path: str = None):
         return current_app.send_static_file('index.html')
+
+
+    @app.after_request
+    def after_request(response):
+        """
+        Allows cross origin requests for localhost.
+        """
+        if '/api' in request.path:
+            header = response.headers
+            print(request.host_url)
+            if 'localhost' in request.host_url:
+                header['Access-Control-Allow-Origin'] = f'{request.host_url}'
+                header['Access-Control-Allow-Headers'] = 'Content-Type'
+                header["Access-Control-Allow-Methods"] = '*'
+        return response
 
 
     AllWebApi(database_registry).RegisterAppEndpoints(app)

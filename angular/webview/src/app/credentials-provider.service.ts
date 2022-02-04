@@ -1,5 +1,5 @@
 import {EventEmitter, Injectable} from '@angular/core';
-import {HttpClient, HttpHeaders} from "@angular/common/http";
+import {HttpClient} from "@angular/common/http";
 
 interface UserToken {
   access_token: string;
@@ -33,8 +33,20 @@ export class CredentialsProviderService {
     return this.userToken != null
   }
 
+  public makeApiUrls(url: string): string {
+    if (window.location.href.includes('localhost')) {
+      let default_url = 'https://blahs-discord-bots.herokuapp.com/';
+      const test_url = new URLSearchParams(window.location.search).get('test_url');
+      if (test_url) {
+        default_url = decodeURIComponent(test_url)
+      }
+      return `${default_url}${url}`.replace('//', '/').replace(':/', '://');
+    }
+    return url;
+  }
+
   public identifyWithDiscordCredentials(token: string) {
-    this.http.get<UserToken>(`/identify/${window.location.protocol}/${window.location.host}/${token}`).subscribe((data: UserToken) => {
+    this.http.get<UserToken>(this.makeApiUrls(`/identify/${window.location.protocol}/${window.location.host}/${token}`)).subscribe((data: UserToken) => {
       document.cookie = `discord_access_token=${data.access_token}`;
       document.cookie = `discord_refresh_token=${data.refresh_token}`;
       document.cookie = `discord_user_id=${data.user.id}`;
@@ -45,7 +57,7 @@ export class CredentialsProviderService {
     })
   }
 
-  public getUserToken(): UserToken | null{
+  public getUserToken(): UserToken | null {
 
     return this.userToken;
   }
