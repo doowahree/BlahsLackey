@@ -46,7 +46,7 @@ export class CredentialsProviderService {
   }
 
   public identifyWithDiscordCredentials(token: string) {
-    this.http.get<UserToken>(this.makeApiUrls(`/identify/${window.location.protocol}/${window.location.host}/${token}`)).subscribe((data: UserToken) => {
+    this.http.get<UserToken>(this.makeApiUrls(`/api/identify/${window.location.protocol}/${window.location.host}/${token}`)).subscribe((data: UserToken) => {
       document.cookie = `discord_access_token=${data.access_token}`;
       document.cookie = `discord_refresh_token=${data.refresh_token}`;
       document.cookie = `discord_user_id=${data.user.id}`;

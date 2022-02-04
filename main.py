@@ -24,12 +24,12 @@ if __name__ == '__main__':
     app = Flask(__name__, static_folder='angular/webview/dist/webview/')
 
 
-    @app.route('/identify_client_id')
+    @app.route('/api/identify_client_id')
     def return_client_id():
         return {'client_id': os.environ['bot_client_id']}
 
 
-    @app.route('/identify/<path:protocol>/<path:redirect_uri>/<path:path>')
+    @app.route('/api/identify/<path:protocol>/<path:redirect_uri>/<path:path>')
     def identify(protocol: str, redirect_uri: str, path: str):
         return ds.proxy_oauth(protocol, redirect_uri, path)
 
