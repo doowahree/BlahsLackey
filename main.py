@@ -47,11 +47,11 @@ if __name__ == '__main__':
         """
         if '/api' in request.path:
             header = response.headers
-            print(f'HostUrl: {request.host_url}')
-            print(f'Origin: {request.origin}')
-            print(f'Referrer: {request.referrer}')
-            if 'localhost' in request.host_url:
-                header['Access-Control-Allow-Origin'] = f'{request.host_url}'
+            # We really care about origin but for sanity check during local dev, use host url because origin
+            # does not exist for direct calls.
+            cors_url = request.origin or request.host_url
+            if 'localhost' in cors_url:
+                header['Access-Control-Allow-Origin'] = f'{cors_url}'
                 header['Access-Control-Allow-Headers'] = 'Content-Type'
                 header["Access-Control-Allow-Methods"] = '*'
         return response
