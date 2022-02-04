@@ -16,7 +16,16 @@ Well, I have an app.json but........ don't have an easy way to run locally YET.
 
 ## Angular client
 
-SOON to be coming? Basically you should be able to start angular client and point to production server.
+If you are only going to be changing angular client, there is no reason to go through the hassle of starting python
+server and all.
+
+You can just go to `angular/webview` and run `>ng serve --serve-path=/webview/ --port=5123`.
+
+This will start a server that servers at /webview/ path which tries to match up with Python serving.
+
+Unfortunately there's a small catch. When you are doing discord authentication, the ng serve does not actually redirect
+you to the /webview/ namespace so when you are redirected to `localhost:5123/?code=xyz`, just add `/webview/` before the
+search params. You will only have to do this once unless you wipe your local chrome storage.
 
 # Main format for listeners
 

@@ -34,7 +34,7 @@ export class LoginComponent implements OnInit {
       if (code) {
         this.credentials.identifyWithDiscordCredentials(code);
       } else {
-        this.http.get<ClientIdResponse>('/api/identify_client_id').subscribe(this._bindClientId.bind(this));
+        this.http.get<ClientIdResponse>(this.credentials.makeApiUrls('/api/identify_client_id')).subscribe(this._bindClientId.bind(this));
         console.log(this);
       }
     }
