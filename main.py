@@ -47,7 +47,9 @@ if __name__ == '__main__':
         """
         if '/api' in request.path:
             header = response.headers
-            print(request.host_url)
+            print(f'HostUrl: {request.host_url}')
+            print(f'Origin: {request.origin}')
+            print(f'Referrer: {request.referrer}')
             if 'localhost' in request.host_url:
                 header['Access-Control-Allow-Origin'] = f'{request.host_url}'
                 header['Access-Control-Allow-Headers'] = 'Content-Type'

@@ -35,7 +35,7 @@ export class CredentialsProviderService {
 
   public makeApiUrls(url: string): string {
     if (window.location.href.includes('localhost')) {
-      let default_url = 'https://blahs-discord-bots.herokuapp.com/';
+      let default_url = 'https://blahs-discord-bots.herokuapp.com';
       const test_url = new URLSearchParams(window.location.search).get('test_url');
       if (test_url) {
         default_url = decodeURIComponent(test_url)
