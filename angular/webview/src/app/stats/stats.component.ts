@@ -99,7 +99,7 @@ export class StatsComponent implements OnInit {
     const identifier = [];
     for (let i = 1; i <= data.maxAttempts; i++) {
 
-      identifier.push(i < (data.attempts > 0 ? data.attempts : data.maxAttempts) ? 'X' : 'O');
+      identifier.push(i < (data.attempts > 0 ? data.attempts : data.maxAttempts + 1) ? 'X' : 'O');
     }
     identifier.push(`(${data.attempts}/${data.maxAttempts})`)
     return `<span class="selfStatsRow">${identifier.join('')}</span>`
