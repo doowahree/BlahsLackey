@@ -211,7 +211,7 @@ class WordleListener(object):
                     'title': 'Classic Games',
                     'description': 'Top 15',
                     'fields': [{'name': '%d. %s' % (ranking, user_id),
-                                'value': 'Score: %s -  Games Played: %s - Avg: %s' % (
+                                'value': 'Score: %s -  Games Played: %s - Avg: %.3f' % (
                                     score_tuple[0], score_tuple[1], score_tuple[2])} for ranking, (user_id, score_tuple)
                                in
                                enumerate(sorted_scores, start=1)]
