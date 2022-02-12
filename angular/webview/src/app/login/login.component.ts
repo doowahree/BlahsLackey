@@ -26,6 +26,10 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (location.host.includes('.com') && location.protocol === 'http:') {
+       window.location.href = location.href.replace('http', 'https');
+    }
+
     if (this.credentials.isIdentified()) {
       this.isLoggedIn = true;
       this.username = this.credentials.getUserToken()?.user.username || 'N/A';
@@ -45,9 +49,7 @@ export class LoginComponent implements OnInit {
     this.counter++;
     this.readyToIdentify = true;
     this.clientId = data.client_id;
-    if (!data.is_dev && location.protocol === 'http:') {
-       window.location.href = location.href.replace('http', 'https');
-    }
+
     this.clientIdObservable.next(this.clientId);
     // this.changeDetectorRef.detectChanges();
     console.log(data.client_id, ' with change detection');
