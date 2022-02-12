@@ -78,7 +78,7 @@ export class StatsComponent implements OnInit {
     this.createSvg();
     setTimeout(() => {
       this.http.get<ProtoDataResponse>(this.credentials.makeApiUrls('/api/wordle/get_season')).subscribe((data) => {
-        this.currentSeason = wordleDb.WordleSeason.decode(this.encoder.encode(data.data));
+        this.currentSeason = wordleDb.WordleSeason.decode(Uint8Array.from(atob(data.data), c => c.charCodeAt(0)));
         this.selectedUser = `${this.credentials.getUserToken()!.user.id}`;
         this.statsTable?.setSort('gameId', 'desc');
         this.season = this.currentSeason.name;

@@ -12,7 +12,7 @@ class WordleWebApi(object):
     def RegisterEndpoints(self, app: Flask):
         @app.route('/api/wordle/get_season')
         def GetSeason():
-            return {'data': str(self.wordle_db.wordle_season.SerializeToString(), 'utf-8')}
+            return {'data': base64.b64encode(self.wordle_db.wordle_season.SerializeToString()).decode('utf-8')}
 
     def GetSeason(self) -> WordleSeason:
         return self.wordle_db.wordle_season
