@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     @app.route('/api/identify_client_id')
     def return_client_id():
-        return {'client_id': os.environ['bot_client_id']}
+        return {'client_id': os.environ['bot_client_id'], 'env': os.environ.get('is_dev', False)}
 
 
     @app.route('/api/identify/<path:protocol>/<path:redirect_uri>/<path:path>')

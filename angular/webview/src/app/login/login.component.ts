@@ -5,6 +5,7 @@ import {HttpClient} from "@angular/common/http";
 
 interface ClientIdResponse {
   client_id: string;
+  is_dev: boolean;
 }
 
 @Component({
@@ -44,6 +45,9 @@ export class LoginComponent implements OnInit {
     this.counter++;
     this.readyToIdentify = true;
     this.clientId = data.client_id;
+    if (!data.is_dev && location.protocol === 'http:') {
+       window.location.href = location.href.replace('http', 'https');
+    }
     this.clientIdObservable.next(this.clientId);
     // this.changeDetectorRef.detectChanges();
     console.log(data.client_id, ' with change detection');
