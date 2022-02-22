@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import urllib.parse
 import zlib
 from queue import Queue
@@ -88,8 +89,11 @@ class DiscordSession(object):
         self.bot_info = {}
         self.bot_user = None
         self.responders = {}
+        self._last_restart_time_secs = time.time()
+        self._rerun_threshold = 3600 * 24
 
-        self._should_reconnect = False;
+        self._should_reconnect = False
+        self._replay_buffer = []
 
     def send(self, json_msg):
         self._ws.send(json.dumps(json_msg))
@@ -118,8 +122,15 @@ class DiscordSession(object):
         """Sends a heartbeat and queues a new timer to send the next heartbeat."""
         print('sending heartbeat')
         self.send({"op": 1, "d": "null" if self._last_seq_no < 0 else self._last_seq_no})
-        self._heartbeat_timer = threading.Timer(self._heartbeat_interval_ms / 1000, self.heartbeat)
-        self._heartbeat_timer.start()
+
+        if time.time() - self._last_restart_time_secs > self._rerun_threshold:
+            print('Restarting as it is now [%s] seconds since last restart out of [%s] threshold' % (
+                time.time() - self._last_restart_time_secs, self._rerun_threshold))
+            self._last_restart_time_secs = time.time()
+            self._ws.close()
+        else:
+            self._heartbeat_timer = threading.Timer(self._heartbeat_interval_ms / 1000, self.heartbeat)
+            self._heartbeat_timer.start()
 
     def identify(self):
         """Sends identify request. Note you are limited to 1000 identify request per 24 hr rolling period."""
@@ -164,6 +175,7 @@ class DiscordSession(object):
         print('Could not find stored session, starting new identify')
 
     def on_message(self, ws, message):
+
         payload = json.loads(message)
         if payload['op'] == 10:
             self._heartbeat_interval_ms = payload['d']['heartbeat_interval']
@@ -183,6 +195,12 @@ class DiscordSession(object):
                 self._heartbeat_timer.cancel()
             self.heartbeat()
         elif payload['op'] == 0:
+            if self._replay_buffer:
+                buffer = self._replay_buffer
+                self._replay_buffer = []
+                for b in buffer:
+                    self.on_message(ws, b)
+
             self._last_seq_no = payload['s']
             event_type = payload['t']
 
@@ -223,6 +241,7 @@ class DiscordSession(object):
                                               on_close=self.on_close)
 
             self._ws.run_forever()
+            print('Sleeping until restart')
             sleep(5)
 
     def on_close(ws, close_status_code, close_msg):
@@ -242,15 +261,15 @@ class DiscordSession(object):
             # http://192.168.1.3:5123/
             # f'{protocol}//{redirect_uri}'
             'redirect_uri': f'{protocol}//{redirect_uri}'},
-                      headers={
-                          'Content-Type': 'application/x-www-form-urlencoded'
-                      }
-                      )
+                          headers={
+                              'Content-Type': 'application/x-www-form-urlencoded'
+                          }
+                          )
         access_token_obj = json.loads(r.text)
         identify = requests.get('https://discord.com/api/v9/users/@me',
-                     headers={
-                         'Authorization': 'Bearer %s' % access_token_obj['access_token']
-                     })
+                                headers={
+                                    'Authorization': 'Bearer %s' % access_token_obj['access_token']
+                                })
 
         access_token_obj['user'] = json.loads(identify.text)
         return access_token_obj
