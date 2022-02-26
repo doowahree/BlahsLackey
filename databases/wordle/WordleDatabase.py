@@ -1,9 +1,10 @@
+import random
 import string
 from typing import Tuple, Optional, List
 
 from DiscordMessageTypes import User
 from GlobalDatabase import GlobalDatabase, _GlobalDatabase
-from databases.wordle.WordlDb_pb2 import WordleSeason, WordlSeasonFileDb, GameRecord, UserRecord
+from databases.wordle.WordlDb_pb2 import WordleSeason, WordlSeasonFileDb, GameRecord, UserRecord, DailySeasonModifier
 
 valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 
@@ -52,12 +53,40 @@ class WordleDatabase(object):
         words = words.strip()
         if words:
             split_words = words.split(',')
-            valid_words = [w for w in split_words if len(w) == word_constraint]
+            valid_words = [w for w in split_words if len(w) == word_constraint][:5]
             invalid_words = [w for w in split_words if w not in valid_words]
 
+            prev_words = self.mods_get_words(user)
             self.wordle_season.users[user.id].user_modifier.suggested_starters[:] = valid_words
+            self.save_season()
+            return [prev_words, valid_words, invalid_words]
 
-            return [self.mods_get_words(user), valid_words, invalid_words]
+    def mods_reroll(self, modifier_key: str) -> DailySeasonModifier:
+        existing_modifier = [dm for dm in self.wordle_season.daily_modifier[:3] if dm.identifier == modifier_key]
+        if any(existing_modifier):
+            self.wordle_season.daily_modifier.remove(existing_modifier[0])
+            return existing_modifier[0]
+        else:
+            return None
+
+    def mods_get(self, modifier_key: str) -> DailySeasonModifier:
+        existing_modifier = [dm for dm in self.wordle_season.daily_modifier[:3] if dm.identifier == modifier_key]
+        if any(existing_modifier):
+            return existing_modifier[0]
+        else:
+            dm = DailySeasonModifier()
+            dm.identifier = modifier_key
+            word_bag = {}
+            for user, userRec in self.wordle_season.users.items():
+                for w in userRec.user_modifier.suggested_starters:
+                    if w not in word_bag:
+                        word_bag[w] = []
+                    word_bag[w].append('<@%s>' % user)
+            sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in random.sample(word_bag.items(), 3)]
+            dm.word_pool.extend(sampled_items)
+            self.wordle_season.daily_modifier.insert(0, dm)
+            self.save_season()
+            return dm
 
     def change_season(self, season: str) -> Tuple[bool, str, str]:
         """

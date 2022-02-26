@@ -1,12 +1,16 @@
 import re
+from datetime import datetime
 from traceback import print_exc
 from typing import Dict, Tuple
+
+import pytz
 
 from CommandParser import Command, TokenMatcherSet, TokenMatcher, CommandSet
 from DiscordGateway import DiscordSession
 from DiscordMessageTypes import MessageCreate, DiscordEmoji
 from databases.wordle.WordlDb_pb2 import UserRecord
 from databases.wordle.WordleDatabase import WordleDatabase
+from pytz import timezone
 
 _NUMBER_SEARCHER = re.compile('\\d+')
 
@@ -76,6 +80,9 @@ class WordleListener(object):
             Command([self.mods_show],
                     TokenMatcherSet([TokenMatcher('mods')]),
                     help='Shows today\'s mods.'),
+            Command([self.mods_reroll],
+                    TokenMatcherSet([TokenMatcher('mods'), TokenMatcher('reroll'), ]),
+                    help='Rerolls today\'s mods.'),
             Command([self.mods_words],
                     TokenMatcherSet([TokenMatcher('mods'), TokenMatcher('words'),
                                      TokenMatcher(re.compile('[\\w,]{,40}'),
@@ -85,14 +92,31 @@ class WordleListener(object):
 
         ])
 
-    def mods_show(self, msg: MessageCreate, ds: DiscordSession):
-        pass
+    def mods_reroll(self, msg: MessageCreate, ds: DiscordSession):
+        date = datetime.now()
+        date = date.astimezone(timezone('US/Pacific'))
+        identifier = date.strftime('PST_%Y-%m-%d')
+        rerolled = self.wordle_db.mods_reroll(identifier)
+        self.mods_show(msg, ds, '[Rerolled]' if rerolled else '')
+        if rerolled:
+            ds.attach_reaction(msg, DiscordEmoji.symbol_ok)
+
+    def mods_show(self, msg: MessageCreate, ds: DiscordSession, additional_msg=''):
+        date = datetime.now()
+        date = date.astimezone(timezone('US/Pacific'))
+        identifier = date.strftime('PST_%Y-%m-%d')
+        modifier = self.wordle_db.mods_get(identifier)
+        full_message = '\n'.join([f'{additional_msg}',
+                                  f'Modifier for: {identifier}',
+                                  f'Word pool to use for today: {list(modifier.word_pool)}'])
+        ds.send_message(msg.channel_id, full_message)
+        ds.attach_reaction(msg, DiscordEmoji.symbol_ok)
 
     def mods_words(self, msg: MessageCreate, ds: DiscordSession, comma_separated_words=None):
         comma_separated_words = (comma_separated_words or '').strip()
         if not comma_separated_words:
             ds.send_message(msg.channel_id,
-                            'Your suggested words so far are: %s' % [self.wordle_db.mods_get_words(msg.author)])
+                            'Your suggested words so far are: %s' % self.wordle_db.mods_get_words(msg.author))
         else:
             prev, added, invalid = self.wordle_db.mods_set_words(msg.author, comma_separated_words)
             m = ['Previously %s -> Now %s' % (prev, added), 'Invalid: %s' % invalid if invalid else '']
