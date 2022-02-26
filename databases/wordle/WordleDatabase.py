@@ -82,7 +82,10 @@ class WordleDatabase(object):
                     if w not in word_bag:
                         word_bag[w] = []
                     word_bag[w].append('<@%s>' % user)
-            sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in random.sample(word_bag.items(), 3)]
+            if len(word_bag.items()) < 3:
+                sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in word_bag.items()]
+            else:
+                sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in random.sample(word_bag.items(), 3)]
             dm.word_pool.extend(sampled_items)
             self.wordle_season.daily_modifier.insert(0, dm)
             self.save_season()
