@@ -8,16 +8,32 @@ message GameRecord {
   optional string extra_data = 4;
 }
 
+message GameModifier {
+  optional string game = 1;
+}
+
+message UserModifier {
+  repeated string suggested_starters = 1;
+}
+
 message UserRecord {
   optional string last_known_name = 3;
+  optional UserModifier user_modifier = 5;
   map<string, GameRecord> classic_games = 1;
   map<string, GameRecord> custom_games = 2;
+  map<string, GameModifier> modifiers = 4;
+}
+
+message DailySeasonModifier {
+  optional string identifier = 1;
+  repeated string word_pool = 2;
 }
 
 message WordleSeason {
   optional string name = 1;
   optional string filename = 2;
   map<string, UserRecord> users = 3;
+  repeated DailySeasonModifier daily_modifier = 4;
 
 }
 

@@ -72,8 +72,31 @@ class WordleListener(object):
                     TokenMatcherSet(
                         [TokenMatcher('leaderboard')]
                     ),
-                    help='Prints the leaderboard.')
+                    help='Prints the leaderboard.'),
+            Command([self.mods_show],
+                    TokenMatcherSet([TokenMatcher('mods')]),
+                    help='Shows today\'s mods.'),
+            Command([self.mods_words],
+                    TokenMatcherSet([TokenMatcher('mods'), TokenMatcher('words'),
+                                     TokenMatcher(re.compile('[\\w,]{,40}'),
+                                                  token_parsing=('comma_separated_words', str))]),
+                    help='Suggests words (up to 5) to be put into a pool. '
+                         'Provide empty suggestion to see your current suggestion.Can be changed at any time'),
+
         ])
+
+    def mods_show(self, msg: MessageCreate, ds: DiscordSession):
+        pass
+
+    def mods_words(self, msg: MessageCreate, ds: DiscordSession, comma_separated_words=None):
+        comma_separated_words = (comma_separated_words or '').strip()
+        if not comma_separated_words:
+            ds.send_message(msg.channel_id,
+                            'Your suggested words so far are: %s' % [self.wordle_db.mods_get_words(msg.author)])
+        else:
+            prev, added, invalid = self.wordle_db.mods_set_words(msg.author, comma_separated_words)
+            m = ['Previously %s -> Now %s' % (prev, added), 'Invalid: %s' % invalid if invalid else '']
+            ds.send_message(msg.channel_id, '\n'.join(m))
 
     def print_weblink(self, msg: MessageCreate, ds: DiscordSession):
         ds.send_message(msg.channel_id,

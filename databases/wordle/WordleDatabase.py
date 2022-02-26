@@ -1,5 +1,5 @@
 import string
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 from DiscordMessageTypes import User
 from GlobalDatabase import GlobalDatabase, _GlobalDatabase
@@ -44,6 +44,20 @@ class WordleDatabase(object):
 
     def save_filenames(self):
         self.proto_store.StoreProto(self._metadata_name(), self.wordle_season_pointer)
+
+    def mods_get_words(self, user: User) -> List[str]:
+        return list(self.wordle_season.users[user.id].user_modifier.suggested_starters)
+
+    def mods_set_words(self, user: User, words: str, word_constraint=5):
+        words = words.strip()
+        if words:
+            split_words = words.split(',')
+            valid_words = [w for w in split_words if len(w) == word_constraint]
+            invalid_words = [w for w in split_words if w not in valid_words]
+
+            self.wordle_season.users[user.id].user_modifier.suggested_starters[:] = valid_words
+
+            return [self.mods_get_words(user), valid_words, invalid_words]
 
     def change_season(self, season: str) -> Tuple[bool, str, str]:
         """
