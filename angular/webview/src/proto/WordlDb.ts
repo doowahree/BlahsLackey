@@ -11,10 +11,20 @@ export interface GameRecord {
   extraData: string;
 }
 
+export interface GameModifier {
+  game: string;
+}
+
+export interface UserModifier {
+  suggestedStarters: string[];
+}
+
 export interface UserRecord {
   lastKnownName: string;
+  userModifier: UserModifier | undefined;
   classicGames: { [key: string]: GameRecord };
   customGames: { [key: string]: GameRecord };
+  modifiers: { [key: string]: GameModifier };
 }
 
 export interface UserRecord_ClassicGamesEntry {
@@ -27,10 +37,21 @@ export interface UserRecord_CustomGamesEntry {
   value: GameRecord | undefined;
 }
 
+export interface UserRecord_ModifiersEntry {
+  key: string;
+  value: GameModifier | undefined;
+}
+
+export interface DailySeasonModifier {
+  identifier: string;
+  wordPool: string[];
+}
+
 export interface WordleSeason {
   name: string;
   filename: string;
   users: { [key: string]: UserRecord };
+  dailyModifier: DailySeasonModifier[];
 }
 
 export interface WordleSeason_UsersEntry {
@@ -42,11 +63,17 @@ export interface WordlSeasonFileDb {
   currentFile: string;
   currentSeasonName: string;
   filenameToSeasonName: { [key: string]: string };
+  reprintRegistered: { [key: string]: boolean };
 }
 
 export interface WordlSeasonFileDb_FilenameToSeasonNameEntry {
   key: string;
   value: string;
+}
+
+export interface WordlSeasonFileDb_ReprintRegisteredEntry {
+  key: string;
+  value: boolean;
 }
 
 function createBaseGameRecord(): GameRecord {
@@ -129,14 +156,134 @@ export const GameRecord = {
   },
 };
 
+function createBaseGameModifier(): GameModifier {
+  return { game: "" };
+}
+
+export const GameModifier = {
+  encode(message: GameModifier, writer: Writer = Writer.create()): Writer {
+    if (message.game !== "") {
+      writer.uint32(10).string(message.game);
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): GameModifier {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGameModifier();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.game = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GameModifier {
+    return {
+      game: isSet(object.game) ? String(object.game) : "",
+    };
+  },
+
+  toJSON(message: GameModifier): unknown {
+    const obj: any = {};
+    message.game !== undefined && (obj.game = message.game);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GameModifier>, I>>(
+    object: I
+  ): GameModifier {
+    const message = createBaseGameModifier();
+    message.game = object.game ?? "";
+    return message;
+  },
+};
+
+function createBaseUserModifier(): UserModifier {
+  return { suggestedStarters: [] };
+}
+
+export const UserModifier = {
+  encode(message: UserModifier, writer: Writer = Writer.create()): Writer {
+    for (const v of message.suggestedStarters) {
+      writer.uint32(10).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): UserModifier {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUserModifier();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.suggestedStarters.push(reader.string());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UserModifier {
+    return {
+      suggestedStarters: Array.isArray(object?.suggestedStarters)
+        ? object.suggestedStarters.map((e: any) => String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: UserModifier): unknown {
+    const obj: any = {};
+    if (message.suggestedStarters) {
+      obj.suggestedStarters = message.suggestedStarters.map((e) => e);
+    } else {
+      obj.suggestedStarters = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<UserModifier>, I>>(
+    object: I
+  ): UserModifier {
+    const message = createBaseUserModifier();
+    message.suggestedStarters = object.suggestedStarters?.map((e) => e) || [];
+    return message;
+  },
+};
+
 function createBaseUserRecord(): UserRecord {
-  return { lastKnownName: "", classicGames: {}, customGames: {} };
+  return {
+    lastKnownName: "",
+    userModifier: undefined,
+    classicGames: {},
+    customGames: {},
+    modifiers: {},
+  };
 }
 
 export const UserRecord = {
   encode(message: UserRecord, writer: Writer = Writer.create()): Writer {
     if (message.lastKnownName !== "") {
       writer.uint32(26).string(message.lastKnownName);
+    }
+    if (message.userModifier !== undefined) {
+      UserModifier.encode(
+        message.userModifier,
+        writer.uint32(42).fork()
+      ).ldelim();
     }
     Object.entries(message.classicGames).forEach(([key, value]) => {
       UserRecord_ClassicGamesEntry.encode(
@@ -148,6 +295,12 @@ export const UserRecord = {
       UserRecord_CustomGamesEntry.encode(
         { key: key as any, value },
         writer.uint32(18).fork()
+      ).ldelim();
+    });
+    Object.entries(message.modifiers).forEach(([key, value]) => {
+      UserRecord_ModifiersEntry.encode(
+        { key: key as any, value },
+        writer.uint32(34).fork()
       ).ldelim();
     });
     return writer;
@@ -162,6 +315,9 @@ export const UserRecord = {
       switch (tag >>> 3) {
         case 3:
           message.lastKnownName = reader.string();
+          break;
+        case 5:
+          message.userModifier = UserModifier.decode(reader, reader.uint32());
           break;
         case 1:
           const entry1 = UserRecord_ClassicGamesEntry.decode(
@@ -181,6 +337,15 @@ export const UserRecord = {
             message.customGames[entry2.key] = entry2.value;
           }
           break;
+        case 4:
+          const entry4 = UserRecord_ModifiersEntry.decode(
+            reader,
+            reader.uint32()
+          );
+          if (entry4.value !== undefined) {
+            message.modifiers[entry4.key] = entry4.value;
+          }
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -194,6 +359,9 @@ export const UserRecord = {
       lastKnownName: isSet(object.lastKnownName)
         ? String(object.lastKnownName)
         : "",
+      userModifier: isSet(object.userModifier)
+        ? UserModifier.fromJSON(object.userModifier)
+        : undefined,
       classicGames: isObject(object.classicGames)
         ? Object.entries(object.classicGames).reduce<{
             [key: string]: GameRecord;
@@ -210,6 +378,14 @@ export const UserRecord = {
             return acc;
           }, {})
         : {},
+      modifiers: isObject(object.modifiers)
+        ? Object.entries(object.modifiers).reduce<{
+            [key: string]: GameModifier;
+          }>((acc, [key, value]) => {
+            acc[key] = GameModifier.fromJSON(value);
+            return acc;
+          }, {})
+        : {},
     };
   },
 
@@ -217,6 +393,10 @@ export const UserRecord = {
     const obj: any = {};
     message.lastKnownName !== undefined &&
       (obj.lastKnownName = message.lastKnownName);
+    message.userModifier !== undefined &&
+      (obj.userModifier = message.userModifier
+        ? UserModifier.toJSON(message.userModifier)
+        : undefined);
     obj.classicGames = {};
     if (message.classicGames) {
       Object.entries(message.classicGames).forEach(([k, v]) => {
@@ -229,6 +409,12 @@ export const UserRecord = {
         obj.customGames[k] = GameRecord.toJSON(v);
       });
     }
+    obj.modifiers = {};
+    if (message.modifiers) {
+      Object.entries(message.modifiers).forEach(([k, v]) => {
+        obj.modifiers[k] = GameModifier.toJSON(v);
+      });
+    }
     return obj;
   },
 
@@ -237,6 +423,10 @@ export const UserRecord = {
   ): UserRecord {
     const message = createBaseUserRecord();
     message.lastKnownName = object.lastKnownName ?? "";
+    message.userModifier =
+      object.userModifier !== undefined && object.userModifier !== null
+        ? UserModifier.fromPartial(object.userModifier)
+        : undefined;
     message.classicGames = Object.entries(object.classicGames ?? {}).reduce<{
       [key: string]: GameRecord;
     }>((acc, [key, value]) => {
@@ -250,6 +440,14 @@ export const UserRecord = {
     }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = GameRecord.fromPartial(value);
+      }
+      return acc;
+    }, {});
+    message.modifiers = Object.entries(object.modifiers ?? {}).reduce<{
+      [key: string]: GameModifier;
+    }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = GameModifier.fromPartial(value);
       }
       return acc;
     }, {});
@@ -405,8 +603,151 @@ export const UserRecord_CustomGamesEntry = {
   },
 };
 
+function createBaseUserRecord_ModifiersEntry(): UserRecord_ModifiersEntry {
+  return { key: "", value: undefined };
+}
+
+export const UserRecord_ModifiersEntry = {
+  encode(
+    message: UserRecord_ModifiersEntry,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.key !== "") {
+      writer.uint32(10).string(message.key);
+    }
+    if (message.value !== undefined) {
+      GameModifier.encode(message.value, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: Reader | Uint8Array,
+    length?: number
+  ): UserRecord_ModifiersEntry {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUserRecord_ModifiersEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.key = reader.string();
+          break;
+        case 2:
+          message.value = GameModifier.decode(reader, reader.uint32());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UserRecord_ModifiersEntry {
+    return {
+      key: isSet(object.key) ? String(object.key) : "",
+      value: isSet(object.value)
+        ? GameModifier.fromJSON(object.value)
+        : undefined,
+    };
+  },
+
+  toJSON(message: UserRecord_ModifiersEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = message.key);
+    message.value !== undefined &&
+      (obj.value = message.value
+        ? GameModifier.toJSON(message.value)
+        : undefined);
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<UserRecord_ModifiersEntry>, I>>(
+    object: I
+  ): UserRecord_ModifiersEntry {
+    const message = createBaseUserRecord_ModifiersEntry();
+    message.key = object.key ?? "";
+    message.value =
+      object.value !== undefined && object.value !== null
+        ? GameModifier.fromPartial(object.value)
+        : undefined;
+    return message;
+  },
+};
+
+function createBaseDailySeasonModifier(): DailySeasonModifier {
+  return { identifier: "", wordPool: [] };
+}
+
+export const DailySeasonModifier = {
+  encode(
+    message: DailySeasonModifier,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.identifier !== "") {
+      writer.uint32(10).string(message.identifier);
+    }
+    for (const v of message.wordPool) {
+      writer.uint32(18).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): DailySeasonModifier {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDailySeasonModifier();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.identifier = reader.string();
+          break;
+        case 2:
+          message.wordPool.push(reader.string());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DailySeasonModifier {
+    return {
+      identifier: isSet(object.identifier) ? String(object.identifier) : "",
+      wordPool: Array.isArray(object?.wordPool)
+        ? object.wordPool.map((e: any) => String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: DailySeasonModifier): unknown {
+    const obj: any = {};
+    message.identifier !== undefined && (obj.identifier = message.identifier);
+    if (message.wordPool) {
+      obj.wordPool = message.wordPool.map((e) => e);
+    } else {
+      obj.wordPool = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<DailySeasonModifier>, I>>(
+    object: I
+  ): DailySeasonModifier {
+    const message = createBaseDailySeasonModifier();
+    message.identifier = object.identifier ?? "";
+    message.wordPool = object.wordPool?.map((e) => e) || [];
+    return message;
+  },
+};
+
 function createBaseWordleSeason(): WordleSeason {
-  return { name: "", filename: "", users: {} };
+  return { name: "", filename: "", users: {}, dailyModifier: [] };
 }
 
 export const WordleSeason = {
@@ -423,6 +764,9 @@ export const WordleSeason = {
         writer.uint32(26).fork()
       ).ldelim();
     });
+    for (const v of message.dailyModifier) {
+      DailySeasonModifier.encode(v!, writer.uint32(34).fork()).ldelim();
+    }
     return writer;
   },
 
@@ -448,6 +792,11 @@ export const WordleSeason = {
             message.users[entry3.key] = entry3.value;
           }
           break;
+        case 4:
+          message.dailyModifier.push(
+            DailySeasonModifier.decode(reader, reader.uint32())
+          );
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -469,6 +818,9 @@ export const WordleSeason = {
             {}
           )
         : {},
+      dailyModifier: Array.isArray(object?.dailyModifier)
+        ? object.dailyModifier.map((e: any) => DailySeasonModifier.fromJSON(e))
+        : [],
     };
   },
 
@@ -481,6 +833,13 @@ export const WordleSeason = {
       Object.entries(message.users).forEach(([k, v]) => {
         obj.users[k] = UserRecord.toJSON(v);
       });
+    }
+    if (message.dailyModifier) {
+      obj.dailyModifier = message.dailyModifier.map((e) =>
+        e ? DailySeasonModifier.toJSON(e) : undefined
+      );
+    } else {
+      obj.dailyModifier = [];
     }
     return obj;
   },
@@ -499,6 +858,9 @@ export const WordleSeason = {
       }
       return acc;
     }, {});
+    message.dailyModifier =
+      object.dailyModifier?.map((e) => DailySeasonModifier.fromPartial(e)) ||
+      [];
     return message;
   },
 };
@@ -575,7 +937,12 @@ export const WordleSeason_UsersEntry = {
 };
 
 function createBaseWordlSeasonFileDb(): WordlSeasonFileDb {
-  return { currentFile: "", currentSeasonName: "", filenameToSeasonName: {} };
+  return {
+    currentFile: "",
+    currentSeasonName: "",
+    filenameToSeasonName: {},
+    reprintRegistered: {},
+  };
 }
 
 export const WordlSeasonFileDb = {
@@ -590,6 +957,12 @@ export const WordlSeasonFileDb = {
       WordlSeasonFileDb_FilenameToSeasonNameEntry.encode(
         { key: key as any, value },
         writer.uint32(26).fork()
+      ).ldelim();
+    });
+    Object.entries(message.reprintRegistered).forEach(([key, value]) => {
+      WordlSeasonFileDb_ReprintRegisteredEntry.encode(
+        { key: key as any, value },
+        writer.uint32(34).fork()
       ).ldelim();
     });
     return writer;
@@ -617,6 +990,15 @@ export const WordlSeasonFileDb = {
             message.filenameToSeasonName[entry3.key] = entry3.value;
           }
           break;
+        case 4:
+          const entry4 = WordlSeasonFileDb_ReprintRegisteredEntry.decode(
+            reader,
+            reader.uint32()
+          );
+          if (entry4.value !== undefined) {
+            message.reprintRegistered[entry4.key] = entry4.value;
+          }
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -639,6 +1021,14 @@ export const WordlSeasonFileDb = {
             return acc;
           }, {})
         : {},
+      reprintRegistered: isObject(object.reprintRegistered)
+        ? Object.entries(object.reprintRegistered).reduce<{
+            [key: string]: boolean;
+          }>((acc, [key, value]) => {
+            acc[key] = Boolean(value);
+            return acc;
+          }, {})
+        : {},
     };
   },
 
@@ -652,6 +1042,12 @@ export const WordlSeasonFileDb = {
     if (message.filenameToSeasonName) {
       Object.entries(message.filenameToSeasonName).forEach(([k, v]) => {
         obj.filenameToSeasonName[k] = v;
+      });
+    }
+    obj.reprintRegistered = {};
+    if (message.reprintRegistered) {
+      Object.entries(message.reprintRegistered).forEach(([k, v]) => {
+        obj.reprintRegistered[k] = v;
       });
     }
     return obj;
@@ -668,6 +1064,14 @@ export const WordlSeasonFileDb = {
     ).reduce<{ [key: string]: string }>((acc, [key, value]) => {
       if (value !== undefined) {
         acc[key] = String(value);
+      }
+      return acc;
+    }, {});
+    message.reprintRegistered = Object.entries(
+      object.reprintRegistered ?? {}
+    ).reduce<{ [key: string]: boolean }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = Boolean(value);
       }
       return acc;
     }, {});
@@ -737,6 +1141,72 @@ export const WordlSeasonFileDb_FilenameToSeasonNameEntry = {
     const message = createBaseWordlSeasonFileDb_FilenameToSeasonNameEntry();
     message.key = object.key ?? "";
     message.value = object.value ?? "";
+    return message;
+  },
+};
+
+function createBaseWordlSeasonFileDb_ReprintRegisteredEntry(): WordlSeasonFileDb_ReprintRegisteredEntry {
+  return { key: "", value: false };
+}
+
+export const WordlSeasonFileDb_ReprintRegisteredEntry = {
+  encode(
+    message: WordlSeasonFileDb_ReprintRegisteredEntry,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.key !== "") {
+      writer.uint32(10).string(message.key);
+    }
+    if (message.value === true) {
+      writer.uint32(16).bool(message.value);
+    }
+    return writer;
+  },
+
+  decode(
+    input: Reader | Uint8Array,
+    length?: number
+  ): WordlSeasonFileDb_ReprintRegisteredEntry {
+    const reader = input instanceof Reader ? input : new Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWordlSeasonFileDb_ReprintRegisteredEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.key = reader.string();
+          break;
+        case 2:
+          message.value = reader.bool();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WordlSeasonFileDb_ReprintRegisteredEntry {
+    return {
+      key: isSet(object.key) ? String(object.key) : "",
+      value: isSet(object.value) ? Boolean(object.value) : false,
+    };
+  },
+
+  toJSON(message: WordlSeasonFileDb_ReprintRegisteredEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = message.key);
+    message.value !== undefined && (obj.value = message.value);
+    return obj;
+  },
+
+  fromPartial<
+    I extends Exact<DeepPartial<WordlSeasonFileDb_ReprintRegisteredEntry>, I>
+  >(object: I): WordlSeasonFileDb_ReprintRegisteredEntry {
+    const message = createBaseWordlSeasonFileDb_ReprintRegisteredEntry();
+    message.key = object.key ?? "";
+    message.value = object.value ?? false;
     return message;
   },
 };

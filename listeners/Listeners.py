@@ -79,6 +79,11 @@ class AllListeners(object):
 
     def on_message(self, ds: DiscordSession, msg: MessageCreate):
         bot_id = ds.get_bot_info().id
+
+        # Ignore own messages
+        if msg.author.id == bot_id:
+            return
+
         try:
             if bot_id in [m.id for m in msg.mentions]:
                 self.commands.Apply(msg.content.split('>', 1)[1], additional_args={'msg': msg, 'ds': ds})

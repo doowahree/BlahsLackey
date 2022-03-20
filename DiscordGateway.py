@@ -230,6 +230,12 @@ class DiscordSession(object):
                                            message.channel_id, message.id, urllib.parse.quote_plus(emoji.value)),
                                        headers=self._header)
 
+    def delete_message(self, message: MessageCreate):
+        self._queue_discord.queue_call(requests.delete,
+                                       'https://discord.com/api/v9/channels/%s/messages/%s' % (
+                                           message.channel_id, message.id),
+                                       headers=self._header)
+
     def run(self):
         """STarts up a websocket connecting to discord api"""
         while self.run:

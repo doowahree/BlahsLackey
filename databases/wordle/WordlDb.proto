@@ -41,4 +41,5 @@ message WordlSeasonFileDb {
   optional string current_file = 1;
   optional string current_season_name = 2;
   map<string, string> filename_to_season_name = 3;
+  map<string, bool> reprint_registered = 4;
 }

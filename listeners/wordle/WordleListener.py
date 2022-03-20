@@ -60,6 +60,14 @@ class WordleListener(object):
                          ]
                     ),
                     help='Updates <game_id> with <attempts>/<max_attempts>. <metadata> is currently unused.'),
+            Command([self.hide_followup_register_channel],
+                    TokenMatcherSet(
+                        [TokenMatcher('hide attempts'),
+                         TokenMatcher(re.compile('[\\w]+'), token_parsing=('do_hide', str)),
+                         ]
+                    ),
+                    help='Hides unspoilered attempts by deleting and posting a copy with original message hidden. '
+                         'Bot requires powers to delete messages!'),
             Command([self.delete_record],
                     TokenMatcherSet(
                         [TokenMatcher('delete'),
@@ -144,6 +152,17 @@ class WordleListener(object):
         except Exception as e:
             return -1
 
+    def hide_followup_register_channel(self, msg: MessageCreate, ds: DiscordSession, do_hide: str):
+        do_hide_bool = 'true' in do_hide.lower()
+        self.wordle_db.hide_followup_register_channel(msg.channel_id, do_hide_bool)
+        ds.attach_reaction(msg, DiscordEmoji.symbol_ok)
+        if do_hide_bool:
+            ds.send_message(msg.channel_id,
+                            'Hide wordle data turned on: All Wordle scores without spoiler tags will be '
+                            'deleted and reposted by this bot.')
+        else:
+            ds.send_message(msg.channel_id, 'No longer hiding Wrodle scores without spoiler tags.')
+
     def print_season(self, msg: MessageCreate, ds: DiscordSession):
         ds.send_message(msg.channel_id, 'Current season is [%s]' % self.wordle_db.wordle_season.name)
 
@@ -160,9 +179,14 @@ class WordleListener(object):
         is_new, record = self.wordle_db.register_record(msg.author, game_id, attempts, max_attempts,
                                                         None if not metadata.startswith('@!@') else metadata)
         if is_new:
-            ds.attach_reaction(msg, DiscordEmoji.symbol_ok)
-            ds.attach_reaction(msg, DiscordEmoji.GetNumber(
-                record.attempts) if record.attempts > 0 else DiscordEmoji.x)
+            if self.wordle_db.hide_followup_check(msg.channel_id) and '||' not in msg.content:
+                ds.delete_message(msg)
+                ds.send_message(msg.channel_id, '<@%s>: Registered Wordle [%s] %s/%s, original message:\n||%s||' % (
+                    msg.author.id, game_id, attempts, max_attempts, msg.content))
+            else:
+                ds.attach_reaction(msg, DiscordEmoji.symbol_ok)
+                ds.attach_reaction(msg, DiscordEmoji.GetNumber(
+                    record.attempts) if record.attempts > 0 else DiscordEmoji.x)
         else:
             ds.attach_reaction(msg, DiscordEmoji.symbol_nope)
 

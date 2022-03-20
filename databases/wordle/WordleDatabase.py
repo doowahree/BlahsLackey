@@ -12,7 +12,7 @@ valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 class WordleDatabase(object):
     def __init__(self, proto_store: _GlobalDatabase):
         self.proto_store = proto_store or GlobalDatabase()
-        self.wordle_season_pointer: WordlSeasonFileDb = WordlSeasonFileDb()
+        self.wordle_metadata: WordlSeasonFileDb = WordlSeasonFileDb()
         self.wordle_season: WordleSeason = WordleSeason()
         self.load_filenames()
 
@@ -25,26 +25,34 @@ class WordleDatabase(object):
     def load_filenames(self):
         metadata = self.proto_store.LoadProto(self._metadata_name())
         if metadata:
-            self.wordle_season_pointer = WordlSeasonFileDb()
-            self.wordle_season_pointer.ParseFromString(metadata)
-            filename = self.wordle_season_pointer.current_file
+            self.wordle_metadata = WordlSeasonFileDb()
+            self.wordle_metadata.ParseFromString(metadata)
+            filename = self.wordle_metadata.current_file
             season_data = self.proto_store.LoadProto(self._season_name(filename))
             if season_data:
                 self.wordle_season = WordleSeason()
                 self.wordle_season.ParseFromString(season_data)
         else:
             print('No Wordle db, creating basic default')
-            self.wordle_season_pointer.current_season_name = 'Tutorial'
-            self.wordle_season_pointer.current_file = 'tutorial'
+            self.wordle_metadata.current_season_name = 'Tutorial'
+            self.wordle_metadata.current_file = 'tutorial'
             self.wordle_season.name = 'Tutorial'
             self.wordle_season.filename = 'tutorial'
-            self.wordle_season_pointer.filename_to_season_name['tutorial'] = 'Tutorial'
+            self.wordle_metadata.filename_to_season_name['tutorial'] = 'Tutorial'
 
     def save_season(self):
-        self.proto_store.StoreProto(self._season_name(self.wordle_season_pointer.current_file), self.wordle_season)
+        self.proto_store.StoreProto(self._season_name(self.wordle_metadata.current_file), self.wordle_season)
 
-    def save_filenames(self):
-        self.proto_store.StoreProto(self._metadata_name(), self.wordle_season_pointer)
+    def save_metadata(self):
+        self.proto_store.StoreProto(self._metadata_name(), self.wordle_metadata)
+
+    def hide_followup_register_channel(self, channel: str, do_hide: bool = True):
+        self.wordle_metadata.reprint_registered[channel] = do_hide
+        self.save_metadata()
+
+    def hide_followup_check(self, channel: str) -> bool:
+        return self.wordle_metadata.reprint_registered[
+            channel] if channel in self.wordle_metadata.reprint_registered else False
 
     def mods_get_words(self, user: User) -> List[str]:
         return list(self.wordle_season.users[user.id].user_modifier.suggested_starters)
@@ -85,7 +93,8 @@ class WordleDatabase(object):
             if len(word_bag.items()) < 3:
                 sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in word_bag.items()]
             else:
-                sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in random.sample(word_bag.items(), 3)]
+                sampled_items = ['%s(%s)' % (word, ','.join(users)) for word, users in
+                                 random.sample(word_bag.items(), 3)]
             dm.word_pool.extend(sampled_items)
             self.wordle_season.daily_modifier.insert(0, dm)
             self.save_season()
@@ -100,10 +109,10 @@ class WordleDatabase(object):
         """
         self.save_season()
         sanitized_filename = ''.join([c for c in season.lower()[:50] if c in valid_chars])
-        if sanitized_filename in self.wordle_season_pointer.filename_to_season_name:
-            self.wordle_season_pointer.current_season_name = season
-            self.wordle_season_pointer.current_file = sanitized_filename
-            self.save_filenames()
+        if sanitized_filename in self.wordle_metadata.filename_to_season_name:
+            self.wordle_metadata.current_season_name = season
+            self.wordle_metadata.current_file = sanitized_filename
+            self.save_metadata()
             self.load_filenames()
 
             return False, season, sanitized_filename
@@ -112,11 +121,11 @@ class WordleDatabase(object):
                 name=season,
                 filename=sanitized_filename,
             )
-            self.wordle_season_pointer.current_season_name = season
-            self.wordle_season_pointer.current_file = sanitized_filename
-            self.wordle_season_pointer.filename_to_season_name[sanitized_filename] = season
+            self.wordle_metadata.current_season_name = season
+            self.wordle_metadata.current_file = sanitized_filename
+            self.wordle_metadata.filename_to_season_name[sanitized_filename] = season
             self.save_season()
-            self.save_filenames()
+            self.save_metadata()
             self.load_filenames()
             return True, season, sanitized_filename
 
